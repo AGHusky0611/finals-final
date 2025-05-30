@@ -1,0 +1,45 @@
+module Server {
+    module CommonObjects {
+        typedef sequence<string> StringSequence;
+
+        struct User {
+            string userId;
+            string displayName;
+            string password;
+        };
+
+        struct GameRules {
+            long waitTime;          // Waiting time for players to join (default 10s)
+            long roundDuration;      // Duration for a game round (default 30s)
+            long maxGuesses;         // Maximum wrong guesses allowed per player (default 5)
+            long roundsToWin;       // Rounds needed to win game (default 3)
+        };
+
+        struct GameResult {
+            string sessionId;
+            string winner;
+            StringSequence players;
+            long roundsPlayed;
+            long totalGuessesMade;
+            long duration;           // Game duration in seconds
+        };
+
+        struct LobbyInfo {
+            string lobbyId;
+            string hostName;
+            long currentPlayers;
+            boolean gameStarted;
+        };
+    };
+
+    module CommonInterface {
+        interface CallBackInterface {
+            // Game-related callbacks
+            void updatePlayerList(in CommonObjects::StringSequence players);
+            void gameStarted();
+            void wordToGuess(in string wordWithBlanks); // e.g., "H _ N G M _ N"
+            void guessResult(in string playerId, in boolean correct, in char letter);
+            void gameEnded(in CommonObjects::GameResult result);
+        };
+    };
+};

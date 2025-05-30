@@ -1,0 +1,22 @@
+#include "CommonInterface.idl"
+#include "Exceptions.idl"
+module Server{
+	module AdminSide{
+
+		typedef sequence<CommonObjects::User> users;
+		typedef sequence<CommonObjects::GameResult> playedSessions;
+
+		interface AdminInterface {
+			CommonObjects::User login(in CommonInterface::CallBackInterface cb,in string userId, in string password) raises(Exceptions::LostConnectionException, Exceptions::AlreadyLoggedInException);
+			void createPlayer(in string playerId, in string password) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
+			void editUserDetails(in string userId, in string password) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException, Exceptions::NoSuchUserFoundException);
+			void deleteUser(in string userId) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException, Exceptions::NoSuchUserFoundException);
+			users getUserList() raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
+			CommonObjects::User searchUser(in string playerId) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException, Exceptions::NoSuchUserFoundException);
+			CommonObjects::GameRules changeRules(in long waitingDuration, in long gameDuration) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
+			playedSessions getGameHistory() raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
+			playedSessions getPlayerHistory(in string playerId) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException, Exceptions::NoSuchUserFoundException);
+			string ping(in string userId) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
+		};
+	};
+};
