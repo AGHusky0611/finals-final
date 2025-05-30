@@ -6,11 +6,6 @@ import client_java.view.login.Login;
 
 public class main {
     public static void main(String[] args) {
-        /*
-        todo - fix the scan lobby, it should stop when entered the game
-        todo - "unknown" host
-        todo - fix the game logic
-         */
         Login login = new Login();
         LoginModel loginModel = new LoginModel();
         LoginController loginController = new LoginController(login, loginModel);

@@ -11,6 +11,8 @@ import java.util.List;
 public class LeaderboardController {
     private final LeaderboardUI view;
     private final LeaderboardModel model;
+    private String userid;
+    private String username;
     private final HomeScreenController homeScreenController;
 
     public LeaderboardController(LeaderboardUI leaderboardUI, LeaderboardModel leaderboardModel, String userid, String username, HomeScreenController homeScreenController) {

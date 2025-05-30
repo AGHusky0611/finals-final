@@ -21,7 +21,7 @@ public class PlayerServerConnection {
 
     private static void initializeConnection() throws Exception {
         Properties props = new Properties();
-        props.put("org.omg.CORBA.ORBInitialHost", "192.168.1.13");
+        props.put("org.omg.CORBA.ORBInitialHost", "localhost");
         props.put("org.omg.CORBA.ORBInitialPort", "1049");
         props.put("com.sun.CORBA.transport.ORBConnectTimeout", "10000");
 

@@ -1,34 +1,27 @@
 package client_java.model.admin;
 
-import Server.AdminSide.AdminInterface;
-import Server.AdminSide.AdminInterfaceHelper;
-import Server.CommonObjects.GameRules;
-import Server.Exceptions.LostConnectionException;
-import Server.Exceptions.NotLoggedInException;
-import org.omg.CORBA.ORB;
-import org.omg.CosNaming.NamingContextExt;
-import org.omg.CosNaming.NamingContextExtHelper;
-
 public class GameSettingsModel {
-    private AdminInterface adminServer;
-
-    public GameSettingsModel() {
-        try {
-            ORB orb = ORB.init(new String[0], null);
-            NamingContextExt nc = NamingContextExtHelper.narrow(
-                    orb.resolve_initial_references("NameService"));
-            adminServer = AdminInterfaceHelper.narrow(nc.resolve_str("AdminService"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Update waitTime & roundDuration (in seconds).
-     * Passing (0,0) simply fetches current settings.
-     */
-    public GameRules changeRules(int waitTime, int roundDuration)
-            throws LostConnectionException, NotLoggedInException {
-        return adminServer.changeRules(waitTime, roundDuration);
-    }
+//    private final AdminOperations adminOps;
+//    private final String adminToken;
+//
+//    public GameSettingsModel(AdminOperations adminOps, String adminToken) {
+//        this.adminOps = adminOps;
+//        this.adminToken = adminToken;
+//    }
+//
+//    /**
+//    * Set the waiting time for game lobby.
+//    */
+//    public void setWaitingTime(long seconds) throws AuthenticationError, ValidationError {
+//        adminOps.setWaitingTime(adminToken, seconds);
+//    }
+//
+//    /**
+//    * Set the duration for each game round.
+//    */
+//    public void setRoundDuration(long seconds) throws AuthenticationError, ValidationError {
+//        adminOps.setRoundDuration(adminToken, seconds);
+//    }
 }
+
+                                                                                            

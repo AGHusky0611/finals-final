@@ -1,0 +1,94 @@
+#include "CommonInterface.idl"
+#include "Exceptions.idl"
+
+module Server {
+    module PlayerSide {
+        typedef sequence<CommonObjects::GameResult> GameHistory;
+        typedef sequence<CommonObjects::LobbyInfo> LobbyList;
+
+        interface PlayerInterface {
+            // Authentication
+            string login(in string username, in string password)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NoSuchUserFoundException);
+
+            string adminLogin(in string username, in string password)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NoSuchUserFoundException);
+
+            void logout(in string userId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+
+            string getUsernameByToken(in string token)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+
+            // Game Management
+            string guess(in string shownWord, in long lobbyId, in char guessChar, in string userId)
+                raises(Exceptions::LostConnectionException,
+                    Exceptions::NotLoggedInException);
+
+            void prepareNextRound(in long lobbyId)
+                raises(Exceptions::LostConnectionException);
+
+            void declareWinner(in long lobbyId, in string username)
+                raises(Exceptions::LostConnectionException);
+
+            void returnToLobby(in long lobbyId, in string username)
+                raises(Exceptions::LostConnectionException);
+
+            CommonObjects::StringSequence getReturnedPlayers(in long lobbyId)
+                raises(Exceptions::LostConnectionException);
+
+            // For multi-round support
+            boolean startNextRound(in string userToken, in long lobbyId)
+                raises(Exceptions::NotLoggedInException,
+                    Exceptions::LostConnectionException);
+
+            string getLobbyHost(in long lobbyId)
+                raises(Exceptions::LostConnectionException);
+
+
+            // Lobby Management
+            long createLobby(in string userToken, in string lobbyName)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            boolean joinLobby(in string userToken, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            void deleteLobby(in long lobbyID)
+                raises(Exceptions::LostConnectionException);
+            void leaveLobby(in string userId, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                Exceptions::NotLoggedInException);
+            long removeAllPlayersFromLobby(in long lobbyID)
+                raises(Exceptions::LostConnectionException);
+            boolean removePlayerFromLobby(in long lobbyId, in string username)
+                raises(Exceptions::LostConnectionException);
+            typedef sequence<string> StringArray;
+            StringArray getPlayersInLobby(in string token, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            boolean startGame(in string userToken, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            boolean isGameStarted(in string userToken, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            boolean closeLobby(in string userToken, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+            long getWaitingDuration(in string userToken, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                       Exceptions::NotLoggedInException);
+
+            // Leaderboard
+            CommonObjects::StringSequence getLeaderboard(in string userId)
+                raises(Exceptions::LostConnectionException);
+
+            CommonObjects::StringSequence getLobbyList(in string userId)
+                            raises(Exceptions::LostConnectionException);
+        };
+    };
+};

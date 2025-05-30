@@ -1,9 +1,11 @@
 package client_java.model.player;
 
+import Server.CommonObjects.*;
 import Server.PlayerSide.*;
 import Server.PlayerSide.PlayerInterfaceHelper;
 import Server.Exceptions.*;
 import client_java.util.PlayerServerConnection;
+import com.sun.org.apache.bcel.internal.generic.ARETURN;
 import org.omg.CORBA.ORB;
 import org.omg.CosNaming.NamingContextExt;
 import org.omg.CosNaming.NamingContextExtHelper;
@@ -22,7 +24,6 @@ public class HomeScreenModel {
     public HomeScreenModel(String userToken) {
         this.userToken = userToken;
         initializeORBConnection();
-        this.username = retrieveUsernameFromServer();
     }
 
     private void initializeORBConnection() {
@@ -30,17 +31,18 @@ public class HomeScreenModel {
             playerServer = PlayerServerConnection.getPlayerServerConnection();
         } catch (Exception e) {
             PlayerServerConnection.handleConnectionError(e);
-            JOptionPane.showMessageDialog(null, "Connection failed: " + e.getMessage(),
+            JOptionPane.showMessageDialog(null,
+                    "Connection failed: " + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
+
             System.exit(1);
         }
     }
 
     public void logout() {
         try {
-            if (playerServer != null && userToken != null) {
-                playerServer.logout(userToken);
-            }
+            // logs out user
+            playerServer.logout(userToken);
         } catch (LostConnectionException e) {
             System.err.println("Logout failed (connection): " + e.message);
         } catch (NotLoggedInException e) {
@@ -66,18 +68,18 @@ public class HomeScreenModel {
 
             for (String entry : lobbyData) {
                 String[] parts = entry.split(":");
-                if (parts.length >= 3) {
-                    int lobbyId = Integer.parseInt(parts[0]);
-                    String lobbyName = parts[1];
-                    int playerCount = Integer.parseInt(parts[2]);
-                    String hostUsername = parts.length >= 4 ? parts[3] : "Unknown";
-
-                    lobbies.add(new LobbyData(lobbyId, lobbyName, playerCount, hostUsername));
+                if (parts.length == 4) {  // Changed from 3 to 4
+                    lobbies.add(new LobbyData(
+                            Integer.parseInt(parts[0]),     // lobbyId
+                            parts[1],                       // lobbyName
+                            Integer.parseInt(parts[2]),     // playerCount
+                            parts[3]                        // hostUsername
+                    ));
                 }
             }
             return lobbies;
         } catch (Exception e) {
-            throw new LostConnectionException("Failed to fetch lobby list: " + e.getMessage());
+            throw new LostConnectionException("Failed to fetch lobby list");
         }
     }
 
@@ -91,36 +93,23 @@ public class HomeScreenModel {
             this.lobbyId = lobbyId;
             this.lobbyName = lobbyName;
             this.playerCount = playerCount;
-            this.hostUsername = hostUsername != null ? hostUsername : "Unknown";
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Lobby[id=%d, name='%s', players=%d, host='%s']",
-                    lobbyId, lobbyName, playerCount, hostUsername);
+            this.hostUsername = hostUsername;
         }
     }
 
-    public void joinLobby(int lobbyId) throws NotLoggedInException, LostConnectionException {
+    public void joinLobby(int lobbyId) throws LostConnectionException, NotLoggedInException {
         try {
-            ensureConnection();
-            boolean success = playerServer.joinLobby(userToken, lobbyId);
-            if (!success) {
-                throw new RuntimeException("Failed to join lobby - server returned false");
-            }
-        } catch (NotLoggedInException | LostConnectionException e) {
+            playerServer.joinLobby(userToken, lobbyId);
+        } catch (LostConnectionException | NotLoggedInException e) {
             throw e;
         } catch (Exception e) {
-            throw new LostConnectionException("Failed to join lobby: " + e.getMessage());
+            throw new LostConnectionException("Failed to join lobby");
         }
     }
 
     public void ensureConnection() throws LostConnectionException {
         if (playerServer == null || orb == null) {
             initializeORBConnection();
-            if (playerServer == null) {
-                throw new LostConnectionException("Unable to establish server connection");
-            }
         }
     }
 
@@ -142,11 +131,7 @@ public class HomeScreenModel {
 
     public String retrieveUsernameFromServer() {
         try {
-            if (playerServer != null && userToken != null) {
-                String retrievedUsername = playerServer.getUsernameByToken(userToken);
-                return retrievedUsername != null ? retrievedUsername : "UnknownUser";
-            }
-            return "UnknownUser";
+            return playerServer.getUsernameByToken(userToken);
         } catch (NotLoggedInException e) {
             System.err.println("User not logged in: " + e.getMessage());
             return "NotLoggedIn";
@@ -161,17 +146,18 @@ public class HomeScreenModel {
 
     public int createLobby(String lobbyName) {
         try {
-            ensureConnection();
             int result = playerServer.createLobby(userToken, lobbyName);
             return result;
         } catch (NotLoggedInException e) {
             System.err.println("User not logged in: " + e.getMessage());
+            return -1; // Return an invalid lobby ID to indicate failure
         } catch (LostConnectionException e) {
             System.err.println("Lost connection to server: " + e.getMessage());
+            return -1; // Return an invalid lobby ID to indicate failure
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Unexpected error while creating lobby: " + e.getMessage());
+            return -1; // Return an invalid lobby ID to indicate failure
         }
-        return -1;
     }
 }

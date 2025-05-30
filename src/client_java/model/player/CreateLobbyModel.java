@@ -6,11 +6,8 @@ import Server.PlayerSide.PlayerInterfaceHelper;
 import Server.Exceptions.*;
 import client_java.util.PlayerServerConnection;
 import org.omg.CORBA.ORB;
-import org.omg.CosNaming.NamingContextExt;
-import org.omg.CosNaming.NamingContextExtHelper;
 
 import javax.swing.*;
-import java.util.Properties;
 
 public class CreateLobbyModel {
     private PlayerInterface playerServer;
@@ -20,6 +17,7 @@ public class CreateLobbyModel {
 
     public CreateLobbyModel(String userToken) {
         this.userToken = userToken;
+        initializeORBConnection();
     }
 
     private void initializeORBConnection() {
@@ -40,7 +38,6 @@ public class CreateLobbyModel {
 
     public int createLobby(String lobbyName) throws NotLoggedInException, LostConnectionException {
         try {
-            ensureConnection();
             return playerServer.createLobby(userToken, lobbyName);
         } catch (NotLoggedInException | LostConnectionException e) {
             throw e;
@@ -51,7 +48,6 @@ public class CreateLobbyModel {
 
     public boolean joinLobby(int lobbyId) throws NotLoggedInException, LostConnectionException {
         try {
-            ensureConnection();
             return playerServer.joinLobby(userToken, lobbyId);
         } catch (NotLoggedInException | LostConnectionException e) {
             throw e;
@@ -60,45 +56,11 @@ public class CreateLobbyModel {
         }
     }
 
-    public String retrieveUsernameFromServer() throws NotLoggedInException, LostConnectionException {
-        try {
-            ensureConnection();
-            return playerServer.getUsernameByToken(userToken);
-        } catch (NotLoggedInException | LostConnectionException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new LostConnectionException("Failed to retrieve username: " + e.getMessage());
-        }
-    }
-
-    public void ensureConnection() throws LostConnectionException {
-        if (playerServer == null || orb == null) {
-            initializeORBConnection();
-            if (playerServer == null) {
-                throw new LostConnectionException("Unable to establish server connection");
-            }
-        }
-    }
-
-    public int getLobbyId() {
-        return lobbyId;
-    }
-
     public void setLobbyId(int lobbyId) {
         this.lobbyId = lobbyId;
     }
 
-    public String getUserToken() {
-        return userToken;
-    }
-
-    public void cleanup() {
-        if (orb != null) {
-            try {
-                orb.shutdown(false);
-            } catch (Exception e) {
-                System.err.println("Error during ORB cleanup: " + e.getMessage());
-            }
-        }
+    public int getHostUsername(String userId, int lobbyId) {
+        return playerServer.getHostUsername(userId, lobbyId);
     }
 }

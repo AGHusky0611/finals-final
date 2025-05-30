@@ -5,7 +5,10 @@ import Server.CommonInterface.CallBackInterface;
 import Server.CommonObjects.GameResult;
 import Server.CommonObjects.GameRules;
 import Server.CommonObjects.User;
-import Server.Exceptions.*;
+import Server.Exceptions.AlreadyLoggedInException;
+import Server.Exceptions.LostConnectionException;
+import Server.Exceptions.NoSuchUserFoundException;
+import Server.Exceptions.NotLoggedInException;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -17,287 +20,154 @@ public class AdminImpl extends AdminInterfacePOA {
     private static final Logger logger = Logger.getLogger(AdminImpl.class.getName());
     private Connection connection;
 
-    // Database config
-    private static final String DB_URL      = "jdbc:mysql://127.0.0.1:3306/hangman";
-    private static final String DB_USER     = "root";
+    // Database configuration
+    private static final String DB_URL = "jdbc:mysql://127.0.0.1:3306/hangman";
+    private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
 
     public AdminImpl() {
+        initializeDatabaseConnection();
+    }
+
+    private void initializeDatabaseConnection() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(DB_URL + "?useSSL=false", DB_USER, DB_PASSWORD);
-            logger.info("Database connected.");
+            this.connection = DriverManager.getConnection(
+                    DB_URL + "?useSSL=false&autoReconnect=true",
+                    DB_USER, DB_PASSWORD);
+            logger.info("[SERVER]: Database connection established");
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "DB init failed", e);
+            logger.log(Level.SEVERE, "[SERVER]: Database connection failed", e);
         }
     }
 
+
+    // needs more fixing and checking specifically sa view
     @Override
-    public User login(CallBackInterface cb, String adminId, String password)
-            throws LostConnectionException, AlreadyLoggedInException {
-        String sql = "SELECT username, password FROM admin WHERE username = ? AND password = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, adminId);
-            ps.setString(2, password);
-            ResultSet rs = ps.executeQuery();
+    public User login(CallBackInterface cb, String adminId, String password) throws LostConnectionException, AlreadyLoggedInException {
+        String sql = "SELECT user_id, password, display_name FROM admins WHERE user_id = ? AND password = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, adminId);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
             if (!rs.next()) {
-                throw new AlreadyLoggedInException("Invalid credentials");
+                throw new AlreadyLoggedInException("Invalid admin credentials");
             }
-            User u = new User();
-            u.userId      = rs.getString("username");
-            u.password    = rs.getString("password");
-            u.displayName = u.userId;  // no separate display name in schema
-            return u;
+            User admin = new User();
+            admin.userId = rs.getString("user_id");
+            admin.password = rs.getString("password");
+            admin.displayName = rs.getString("display_name");
+            return admin;
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error during login");
+            logger.log(Level.SEVERE, "Database error during admin login", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
     @Override
-    public void createPlayer(String playerId, String password)
-            throws LostConnectionException, NotLoggedInException {
-        String sql = "INSERT INTO player(username,password) VALUES(?,?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, playerId);
-            ps.setString(2, password);
-            ps.executeUpdate();
+    public void createPlayer(String playerId, String password) throws LostConnectionException, NotLoggedInException {
+        String sql = "INSERT INTO users (user_id, password) VALUES (?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, playerId);
+            stmt.setString(2, password);
+            stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error creating player");
+            logger.log(Level.SEVERE, "Error creating player", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
     @Override
-    public void editUserDetails(String userId, String newPassword)
-            throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
-        String sql = "UPDATE player SET password = ? WHERE username = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, newPassword);
-            ps.setString(2, userId);
-            if (ps.executeUpdate() == 0) {
-                throw new NoSuchUserFoundException("No such player: " + userId);
+    public void editUserDetails(String userId, String newPassword) throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
+        String sql = "UPDATE users SET password = ? WHERE user_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, newPassword);
+            stmt.setString(2, userId);
+            int updated = stmt.executeUpdate();
+            if (updated == 0) {
+                throw new NoSuchUserFoundException("User not found: " + userId);
             }
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error editing player");
+            logger.log(Level.SEVERE, "Error editing user details", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
     @Override
-    public void deleteUser(String userId)
-            throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
-        String sql = "DELETE FROM player WHERE username = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, userId);
-            if (ps.executeUpdate() == 0) {
-                throw new NoSuchUserFoundException("No such player: " + userId);
+    public void deleteUser(String userId) throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            int deleted = stmt.executeUpdate();
+            if (deleted == 0) {
+                throw new NoSuchUserFoundException("User not found: " + userId);
             }
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error deleting player");
+            logger.log(Level.SEVERE, "Error deleting user", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
     @Override
     public User[] getUserList() throws LostConnectionException, NotLoggedInException {
-        String sql = "SELECT username, password FROM player";
-        try (PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            java.util.List<User> users = new java.util.ArrayList<>();
+        String sql = "SELECT user_id, password, display_name FROM users";
+        List<User> list = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 User u = new User();
-                u.userId      = rs.getString("username");
-                u.password    = rs.getString("password");
-                u.displayName = u.userId;
-                users.add(u);
+                u.userId = rs.getString("user_id");
+                u.password = rs.getString("password");
+                u.displayName = rs.getString("display_name");
+                list.add(u);
             }
-            return users.toArray(new User[0]);
+            return list.toArray(new User[0]);
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error fetching players");
+            logger.log(Level.SEVERE, "Error fetching user list", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
     @Override
-    public User searchUser(String userId)
-            throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
-        String sql = "SELECT username, password FROM player WHERE username = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, userId);
-            ResultSet rs = ps.executeQuery();
+    public User searchUser(String userId) throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
+        String sql = "SELECT user_id, password, display_name FROM users WHERE user_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            ResultSet rs = stmt.executeQuery();
             if (!rs.next()) {
-                throw new NoSuchUserFoundException("No such player: " + userId);
+                throw new NoSuchUserFoundException("User not found: " + userId);
             }
             User u = new User();
-            u.userId      = rs.getString("username");
-            u.password    = rs.getString("password");
-            u.displayName = u.userId;
+            u.userId = rs.getString("user_id");
+            u.password = rs.getString("password");
+            u.displayName = rs.getString("display_name");
             return u;
         } catch (SQLException e) {
-            throw new LostConnectionException("DB error searching player");
+            logger.log(Level.SEVERE, "Error searching for user", e);
+            throw new LostConnectionException("Database connection issue");
         }
     }
 
+    // Everything here below will be changed and needs fixing
+
     @Override
-    public GameRules changeRules(int waitTime, int roundDuration)
-            throws LostConnectionException, NotLoggedInException {
-        String sqlUpdate = "UPDATE durationconfig SET waitingDuration = ?, gameDuration = ?";
-        String sqlSelect = "SELECT waitingDuration, gameDuration FROM durationconfig LIMIT 1";
-
-        try (PreparedStatement ps = connection.prepareStatement(sqlUpdate)) {
-            ps.setInt(1, waitTime);
-            ps.setInt(2, roundDuration);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error updating durationconfig", e);
-            throw new LostConnectionException("Database error changing rules");
-        }
-
-        try (Statement st = connection.createStatement();
-             ResultSet rs = st.executeQuery(sqlSelect)) {
-            if (!rs.next()) {
-                throw new LostConnectionException("No durationconfig row found");
-            }
-            GameRules gr = new GameRules();
-            gr.waitTime      = rs.getInt("waitingDuration");
-            gr.roundDuration = rs.getInt("gameDuration");
-            return gr;
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error reading durationconfig", e);
-            throw new LostConnectionException("Database error fetching rules");
-        }
+    public GameRules changeRules(int waitingDuration, int gameDuration) throws LostConnectionException, NotLoggedInException {
+        return null; // based on the project specifications, the only configurations that the admins needs to be able to do are lobby waiting time and round duration
     }
+
+
     @Override
-    public GameResult[] getGameHistory()
-            throws LostConnectionException, NotLoggedInException {
-        String sqlLobbies =
-                "SELECT lobbyID, winner FROM lobby";
-        List<GameResult> results = new ArrayList<>();
-        try (PreparedStatement lobStmt = connection.prepareStatement(sqlLobbies);
-             ResultSet lobRs = lobStmt.executeQuery()) {
-
-            // Sub-queries
-            String sqlPlayers =
-                    "SELECT username, scoreCount FROM playerinlobby WHERE lobbyID = ?";
-            PreparedStatement plyStmt = connection.prepareStatement(sqlPlayers);
-
-            String sqlRounds =
-                    "SELECT COUNT(*) AS roundsPlayed FROM usedword WHERE lobbyID = ?";
-            PreparedStatement roundsStmt = connection.prepareStatement(sqlRounds);
-
-            // Shared gameDuration
-            int durationSeconds = 0;
-            try (ResultSet cfg = connection.createStatement()
-                    .executeQuery("SELECT gameDuration FROM durationconfig LIMIT 1")) {
-                if (cfg.next()) durationSeconds = cfg.getInt("gameDuration");
-            }
-
-            while (lobRs.next()) {
-                int lid = lobRs.getInt("lobbyID");
-
-                // players + total guesses
-                plyStmt.setInt(1, lid);
-                try (ResultSet plyRs = plyStmt.executeQuery()) {
-                    List<String> players = new ArrayList<>();
-                    int totalGuesses = 0;
-                    while (plyRs.next()) {
-                        players.add(plyRs.getString("username"));
-                        totalGuesses += plyRs.getInt("scoreCount");
-                    }
-
-                    // rounds played
-                    roundsStmt.setInt(1, lid);
-                    int rounds = 0;
-                    try (ResultSet rRs = roundsStmt.executeQuery()) {
-                        if (rRs.next()) rounds = rRs.getInt("roundsPlayed");
-                    }
-
-                    GameResult gr = new GameResult();
-                    gr.sessionId        = String.valueOf(lid);
-                    gr.winner           = lobRs.getString("winner");
-                    gr.players          = players.toArray(new String[0]);   // StringSequence → String[]
-                    gr.roundsPlayed     = rounds;                          // now int
-                    gr.totalGuessesMade = totalGuesses;                    // now int
-                    gr.duration         = durationSeconds;                 // now int
-
-                    results.add(gr);
-                }
-            }
-            return results.toArray(new GameResult[0]);
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error fetching game history", e);
-            throw new LostConnectionException("Database error fetching game history");
-        }
+    public GameResult[] getGameHistory() throws LostConnectionException, NotLoggedInException {
+        return new GameResult[0];
     }
 
     @Override
-    public GameResult[] getPlayerHistory(String playerId)
-            throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
-        String sqlLobbies =
-                "SELECT DISTINCT pil.lobbyID, l.winner " +
-                        "FROM playerinlobby pil " +
-                        "JOIN lobby l ON pil.lobbyID = l.lobbyID " +
-                        "WHERE pil.username = ?";
-        List<GameResult> results = new ArrayList<>();
-        try (PreparedStatement lobStmt = connection.prepareStatement(sqlLobbies)) {
-            lobStmt.setString(1, playerId);
-            try (ResultSet lobRs = lobStmt.executeQuery()) {
-                if (!lobRs.isBeforeFirst()) {
-                    throw new NoSuchUserFoundException("No history for user: " + playerId);
-                }
-
-                String sqlPlayers =
-                        "SELECT username, scoreCount FROM playerinlobby WHERE lobbyID = ?";
-                PreparedStatement plyStmt = connection.prepareStatement(sqlPlayers);
-
-                String sqlRounds =
-                        "SELECT COUNT(*) AS roundsPlayed FROM usedword WHERE lobbyID = ?";
-                PreparedStatement roundsStmt = connection.prepareStatement(sqlRounds);
-
-                int durationSeconds = 0;
-                try (ResultSet cfg = connection.createStatement()
-                        .executeQuery("SELECT gameDuration FROM durationconfig LIMIT 1")) {
-                    if (cfg.next()) durationSeconds = cfg.getInt("gameDuration");
-                }
-
-                while (lobRs.next()) {
-                    int lid = lobRs.getInt("lobbyID");
-
-                    // players + guesses
-                    plyStmt.setInt(1, lid);
-                    try (ResultSet plyRs = plyStmt.executeQuery()) {
-                        List<String> players = new ArrayList<>();
-                        int totalGuesses = 0;
-                        while (plyRs.next()) {
-                            players.add(plyRs.getString("username"));
-                            totalGuesses += plyRs.getInt("scoreCount");
-                        }
-
-                        // rounds
-                        roundsStmt.setInt(1, lid);
-                        int rounds = 0;
-                        try (ResultSet rRs = roundsStmt.executeQuery()) {
-                            if (rRs.next()) rounds = rRs.getInt("roundsPlayed");
-                        }
-
-                        GameResult gr = new GameResult();
-                        gr.sessionId        = String.valueOf(lid);
-                        gr.winner           = lobRs.getString("winner");
-                        gr.players          = players.toArray(new String[0]);
-                        gr.roundsPlayed     = rounds;
-                        gr.totalGuessesMade = totalGuesses;
-                        gr.duration         = durationSeconds;
-
-                        results.add(gr);
-                    }
-                }
-            }
-            return results.toArray(new GameResult[0]);
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error fetching player history", e);
-            throw new LostConnectionException("Database error fetching player history");
-        }
+    public GameResult[] getPlayerHistory(String playerId) throws LostConnectionException, NotLoggedInException, NoSuchUserFoundException {
+        return new GameResult[0];
     }
 
     @Override
     public String ping(String userId) throws LostConnectionException, NotLoggedInException {
-        return "ping:" + userId;
+        return "ping:";
     }
 }

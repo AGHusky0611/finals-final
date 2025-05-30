@@ -1,0 +1,36 @@
+module Server {
+    module Exceptions {
+        // General exceptions
+        exception LostConnectionException {
+            string message;
+        };
+        exception NotLoggedInException {
+            string message;
+        };
+        exception NoSuchUserFoundException {
+            string message;
+        };
+        exception AlreadyLoggedInException {
+            string message;
+        };
+
+        // Game exceptions
+        exception WrongGuessException {
+            string message;
+        };
+        exception TimeoutException {
+            string message;
+        };
+
+        // Lobby exceptions
+        exception SessionFullException {
+            string message;
+        };
+        exception SessionNotFoundException {
+            string message;
+        };
+        exception NotEnoughPlayersException {
+            string message;
+        };
+    };
+};

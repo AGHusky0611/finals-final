@@ -96,7 +96,7 @@ public class CreateLobbyDialog extends JDialog {
     }
 
     public String getLobbyName() {
-        String name = nameField.getText();
+        String name = nameField.getText().trim();
         return name.equals("Enter lobby name..") ? "" : name;
     }
 

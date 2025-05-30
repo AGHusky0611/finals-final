@@ -2,38 +2,19 @@ package client_java.model.player;
 
 import Server.CommonObjects.*;
 import Server.Exceptions.*;
-import Server.PlayerSide.PlayerInterface;
-import Server.PlayerSide.PlayerInterfaceHelper;
 import client_java.util.PlayerServerConnection;
-import org.omg.CORBA.ORB;
-import org.omg.CosNaming.NamingContextExt;
-import org.omg.CosNaming.NamingContextExtHelper;
-
-import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 public class LeaderboardModel {
     private List<String> players;
     private List<Integer> wins;
     private String userid;
-    private PlayerInterface playerServer;
 
     public LeaderboardModel(String userid) {
         this.players = new ArrayList<>();
         this.wins = new ArrayList<>();
         this.userid = userid;
-
-        try {
-            playerServer = PlayerServerConnection.getPlayerServerConnection();
-        } catch (Exception e) {
-            PlayerServerConnection.handleConnectionError(e);
-            JOptionPane.showMessageDialog(null,
-                    "Connection failed: " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            System.exit(1);
-        }
     }
 
     public void fetchLeaderboardData() throws LostConnectionException {

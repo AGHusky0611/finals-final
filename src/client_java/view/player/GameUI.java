@@ -11,11 +11,10 @@ public class GameUI extends JFrame {
     private JLabel word, triesLeft;
     private JLabel hangmanImageLabel; // Reference to the hangman image label
     private ImageIcon image;
-    private JLabel roundInfo;
 
     public GameUI() {
         // ======== set up frame ========= //
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setIconImage(new ImageIcon("res/logo/Hangman_Logo.jpg").getImage());
         setTitle("What's The Word?");
         setSize(1000, 700);
@@ -66,13 +65,6 @@ public class GameUI extends JFrame {
         word.setFont(new Font("Segoe UI", Font.PLAIN, 40));
         word.setHorizontalAlignment(SwingConstants.CENTER);
         word.setVerticalAlignment(SwingConstants.CENTER);
-
-        // Add this to the initialization code (in the constructor)
-        roundInfo = new JLabel("Round 1 | You: 0 | Opponent: 0");
-        roundInfo.setBounds(50, 80, 300, 30);
-        roundInfo.setFont(new Font("Segoe UI", Font.PLAIN, 20));
-        roundInfo.setForeground(Color.white);
-        panel.add(roundInfo);
 
         answerField = (JTextField) createRoundedField(false, 15, 40);
         answerField.setBounds(200, 470, 560, 50);
@@ -173,8 +165,6 @@ public class GameUI extends JFrame {
     public void setAnswerFieldInteract(boolean enabled) {
         answerField.setEnabled(enabled);
     }
-
-    public JLabel getRoundInfo() {return roundInfo;}
 
     public ImageIcon changeImage(int stage) {
         String imagePath = "res/images/stage" + stage + ".png";
