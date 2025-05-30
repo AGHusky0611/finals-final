@@ -67,9 +67,11 @@ public class LobbyHostController {
 
         this.view = view;
         this.model = model;
+
         this.parentView = parentView;
         this.parentController = parentController;
         this.createdLobbyRow = createdLobbyRow;
+
         this.isHost = isHost;
         initialize();
     }

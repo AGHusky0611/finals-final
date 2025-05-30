@@ -256,78 +256,72 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     @Override
     public String getLobbyHost(String userid, int lobbyId) throws LostConnectionException {
-        return "";
+        try {
+            if (!SessionManagement.isValidToken(userid)) {
+                throw new NotLoggedInException("Invalid or expired token");
+            }
+
+            String sql = "SELECT hostUsername FROM lobby WHERE lobbyID = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setInt(1, lobbyId);
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    return rs.getString("hostUsername");
+                }
+                return ""; // Lobby not found
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error getting lobby host", e);
+            throw new LostConnectionException("Database error");
+        } catch (NotLoggedInException e) {
+            logger.log(Level.WARNING, "Unauthorized access to get lobby host", e);
+            return ""; // Return empty string for unauthorized access
+        }
     }
 
     @Override
-    public int createLobby(String userId, String lobbyName)
-            throws LostConnectionException, NotLoggedInException, IllegalArgumentException {
-
-        // Validate session
-        if (!SessionManagement.isValidToken(userId)) {
-            throw new NotLoggedInException("Invalid or expired token");
+    public int createLobby(String userToken, String lobbyName) throws LostConnectionException, NotLoggedInException {
+        if (!SessionManagement.isValidToken(userToken)) {
+            throw new NotLoggedInException("[SERVER]: Invalid or expired token");
         }
-        String username = SessionManagement.getUsername(userId);
+        String username = SessionManagement.getUsername(userToken);
         if (username == null) {
-            throw new NotLoggedInException("No user associated with this token");
+            throw new NotLoggedInException("[SERVER]: No user associated with this token");
         }
 
-        // Validate lobby name
         lobbyName = lobbyName.trim();
-        if (lobbyName.isEmpty() || lobbyName.length() > 100) {
-            throw new IllegalArgumentException("Lobby name must be 1-100 characters");
+        if (lobbyName.isEmpty()) {
+            throw new IllegalArgumentException("[SERVER]: Lobby name cannot be empty");
         }
 
-        Connection conn = null;
         try {
-            conn = connection;
-            conn.setAutoCommit(false); // Start transaction
-
-            // Create lobby and get ID
-            int lobbyId;
-            try (CallableStatement stmt = conn.prepareCall("{CALL createLobby(?, ?, ?)}")) {
+            try (CallableStatement stmt = connection.prepareCall("{CALL createLobby(?, ?, ?)}")) {
                 stmt.setString(1, lobbyName);
                 stmt.setString(2, username);
                 stmt.registerOutParameter(3, Types.INTEGER);
-                stmt.execute();
-                lobbyId = stmt.getInt(3);
 
-                if (lobbyId <= 0) {
+                stmt.execute();
+
+                int lobbyId = stmt.getInt(3);
+                if (lobbyId > 0) {
+                    logger.info("[SERVER]: Lobby '" + lobbyName + "' created with ID " + lobbyId + " by user: " + username);
+                    return lobbyId;
+                } else {
                     throw new SQLException("Lobby creation failed: ID not returned");
                 }
             }
-
-            // Add creator to lobby
-            try (PreparedStatement joinStmt = conn.prepareStatement(
-                    "INSERT INTO playerinlobby (username, lobbyID, scoreCount) VALUES (?, ?, 0)")) {
-                joinStmt.setString(1, username);
-                joinStmt.setInt(2, lobbyId);
-                joinStmt.executeUpdate();
-            }
-
-            conn.commit();
-            logger.info("Lobby created - ID: " + lobbyId + ", Name: " + lobbyName);
-            return lobbyId;
-
         } catch (SQLException e) {
-            try { if (conn != null) conn.rollback(); } catch (SQLException ex) {
-                logger.log(Level.SEVERE, "Rollback failed", ex);
+            logger.log(Level.SEVERE, "[SERVER]: SQL error while creating lobby", e);
+
+            if (e.getMessage().contains("Communications link failure") || e.getMessage().contains("connection")) {
+                throw new LostConnectionException("Database connection lost: " + e.getMessage());
             }
 
-            if (e.getMessage().contains("Duplicate entry")) {
-                throw new IllegalArgumentException("Lobby name already exists");
-            }
-            if (e.getMessage().contains("connection")) {
-                throw new LostConnectionException("Database connection lost");
-            }
-
-            logger.log(Level.SEVERE, "Lobby creation failed", e);
-            throw new LostConnectionException("Failed to create lobby: " + e.getMessage());
-
-        } finally {
-            try { if (conn != null) conn.setAutoCommit(true); } catch (SQLException e) {
-                logger.log(Level.WARNING, "Auto-commit reset failed", e);
-            }
+            throw new LostConnectionException("[SERVER]: SQL error: " + e.getMessage());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "[SERVER]: Unexpected error while creating lobby", e);
+            throw new LostConnectionException("[SERVER]: Server error while creating lobby");
         }
     }
 

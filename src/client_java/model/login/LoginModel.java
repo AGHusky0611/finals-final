@@ -1,14 +1,9 @@
 package client_java.model.login;
 
-import Server.CommonInterface.CallBackInterface;
-import Server.CommonInterface.CallBackInterfaceHelper;
+
 import Server.PlayerSide.PlayerInterface;
 
 import client_java.util.PlayerServerConnection;
-
-import org.omg.CORBA.ORB;
-import org.omg.PortableServer.POA;
-import org.omg.PortableServer.POAHelper;
 
 import javax.swing.*;
 import java.util.Arrays;

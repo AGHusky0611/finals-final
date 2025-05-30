@@ -59,6 +59,9 @@ public class LobbyHostModel {
     public boolean isLobbyHost(String userId, int lobbyId) {
         try {
             String host = playerServer.getLobbyHost(userId,lobbyId);
+            System.out.println("[DEBUG]: " +
+                    "host: " + host +
+                    "user: " + playerServer.getUsernameByToken(userId));
             return host != null && host.equals(playerServer.getUsernameByToken(userId));
         } catch (Exception e) {
             return false;

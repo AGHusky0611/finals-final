@@ -63,4 +63,14 @@ public class CreateLobbyModel {
     public String getHostUsername(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
         return playerServer.getLobbyHost(userId, lobbyId);
     }
+
+    public void cleanup() {
+        if (orb != null) {
+            try {
+                orb.shutdown(false);
+            } catch (Exception e) {
+                System.err.println("Error during ORB cleanup: " + e.getMessage());
+            }
+        }
+    }
 }

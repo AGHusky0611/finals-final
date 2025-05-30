@@ -50,7 +50,7 @@ public class CreateLobbyController {
     private void setupCancelButtonAction() {
         view.getCancelButton().addActionListener(e -> {
             view.dispose();
-//            cleanup(); todo - cleanup later
+            model.cleanup();
         });
     }
 
@@ -74,10 +74,11 @@ public class CreateLobbyController {
             model.joinLobby(lobbyId);
             model.setLobbyId(lobbyId);
 
-            //todo - still need fixing
             String hostUsername = model.getHostUsername(userid, lobbyId);
+            System.out.println("[DEBUG - retrieval of host]: " + hostUsername);
             JPanel createdLobbyRow = parentView.addLobbyRow(hostUsername, lobbyName, 1);
             view.dispose();
+
             showLobbyHostDialog(lobbyName, hostUsername, createdLobbyRow);
 
         } catch (NotLoggedInException e) {
@@ -90,7 +91,7 @@ public class CreateLobbyController {
             view.showErrorMessage("Unexpected error: " + e.getMessage());
         }
 
-//        cleanup(); todo - to be checked
+        model.cleanup();
     }
 
     private void showLobbyHostDialog(String lobbyName, String username, JPanel createdLobbyRow) {
@@ -100,6 +101,7 @@ public class CreateLobbyController {
         LobbyHostController lobbyHostController = new LobbyHostController(lobbyHostView, lobbyHostModel,
                 parentView, parentController,
                 createdLobbyRow, true, userid, lobbyId);
+
         lobbyHostView.setVisible(true);
     }
 }
