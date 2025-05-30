@@ -428,7 +428,22 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     @Override
     public String getHostUsername(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        return "";
+        System.out.println("[SERVER]:" + SessionManagement.getUsername(userId) +" Getting host username for lobby " + lobbyId);
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT hostUsername FROM lobby WHERE lobbyID = ?")) {
+            stmt.setInt(1, lobbyId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getString("hostUsername");
+            }
+            throw new SQLException("Lobby not found");
+        } catch (SQLException e) {
+            if (e.getMessage().contains("connection")) {
+                throw new LostConnectionException("Database connection lost");
+            }
+            throw new LostConnectionException("Failed to get lobby host: " + e.getMessage());
+        }
     }
 
     public void deleteLobby(int lobbyID) throws LostConnectionException {
