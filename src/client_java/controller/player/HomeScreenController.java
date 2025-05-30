@@ -80,7 +80,7 @@ public class HomeScreenController {
             CreateLobbyDialog lobbyview = new CreateLobbyDialog(view);
             CreateLobbyModel lobbyModel = new CreateLobbyModel(userId); // Using userId as userToken
 
-            CreateLobbyController createLobbyController = new CreateLobbyController(lobbyview, lobbyModel, userId);
+            CreateLobbyController createLobbyController = new CreateLobbyController(lobbyview, lobbyModel,this.view, this, userId);
             lobbyview.setVisible(true);
         });
     }

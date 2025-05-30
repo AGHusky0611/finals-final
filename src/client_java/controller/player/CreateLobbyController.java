@@ -7,6 +7,7 @@ import Server.PlayerSide.PlayerInterface;
 import client_java.model.player.CreateLobbyModel;
 import client_java.util.PlayerServerConnection;
 import client_java.view.player.CreateLobbyDialog;
+import client_java.view.player.HomeScreenUI;
 
 import javax.swing.*;
 
@@ -22,7 +23,9 @@ public class CreateLobbyController {
     private CreateLobbyDialog view;
     private CreateLobbyModel model;
     
-    public CreateLobbyController(CreateLobbyDialog view, CreateLobbyModel model, String userid) {
+    public CreateLobbyController(CreateLobbyDialog view, CreateLobbyModel model, HomeScreenUI parentView,
+                                 HomeScreenController parentController,
+                                 String userid) {
         this.view = view;
         this.userid = userid;
 
@@ -63,7 +66,7 @@ public class CreateLobbyController {
             model.setLobbyId(lobbyId);
 
             //todo - still need fixing
-            String username = model.retrieveUsernameFromServer();
+            String username = model.getHostUsername(userid, lobbyId);
             JPanel createdLobbyRow = parentView.addLobbyRow(username, lobbyName, 1);
             view.dispose();
             showLobbyHostDialog(lobbyName, username, createdLobbyRow);
