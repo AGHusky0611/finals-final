@@ -94,9 +94,11 @@ public class CreateLobbyController {
 
     private void showLobbyHostDialog(String lobbyName, String username, JPanel createdLobbyRow) {
         LobbyHostDialog lobbyHostView = new LobbyHostDialog(parentView, lobbyName, username);
-        LobbyHostModel lobbyHostModel = new LobbyHostModel(model.getUserToken(), lobbyName, username, model.getLobbyId());
+        LobbyHostModel lobbyHostModel = new LobbyHostModel();
 
-        LobbyHostController lobbyHostController = new LobbyHostController(lobbyHostView, lobbyHostModel, parentView, parentController, createdLobbyRow, true);
+        LobbyHostController lobbyHostController = new LobbyHostController(lobbyHostView, lobbyHostModel,
+                parentView, parentController,
+                createdLobbyRow, true, userid);
         lobbyHostView.setVisible(true);
     }
 }

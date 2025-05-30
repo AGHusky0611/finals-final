@@ -20,6 +20,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 
+/**
+ * A landing page after the player has logged in
+ * purpose:
+ * - show the active lobbies
+ * - allow users to join and create lobby
+ * - allows user to see who leading in the leaderboard
+ * - log out
+ */
 public class HomeScreenController {
     String userId;
     String username;
