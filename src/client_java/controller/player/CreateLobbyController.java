@@ -5,9 +5,11 @@ import Server.Exceptions.LostConnectionException;
 import Server.Exceptions.NotLoggedInException;
 import Server.PlayerSide.PlayerInterface;
 import client_java.model.player.CreateLobbyModel;
+import client_java.model.player.LobbyHostModel;
 import client_java.util.PlayerServerConnection;
 import client_java.view.player.CreateLobbyDialog;
 import client_java.view.player.HomeScreenUI;
+import client_java.view.player.LobbyHostDialog;
 
 import javax.swing.*;
 
@@ -20,16 +22,22 @@ import javax.swing.*;
  */
 public class CreateLobbyController {
     private String userid;
+
     private CreateLobbyDialog view;
     private CreateLobbyModel model;
+    private HomeScreenUI parentView;
+    private HomeScreenController parentController;
     
     public CreateLobbyController(CreateLobbyDialog view, CreateLobbyModel model, HomeScreenUI parentView,
                                  HomeScreenController parentController,
                                  String userid) {
-        this.view = view;
         this.userid = userid;
 
+        this.view = view;
         this.model = model;
+
+        this.parentView = parentView;
+        this.parentController = parentController;
         initialize();
     }
 
@@ -81,6 +89,14 @@ public class CreateLobbyController {
             view.showErrorMessage("Unexpected error: " + e.getMessage());
         }
 
-        cleanup();
+//        cleanup(); todo - to be checked
+    }
+
+    private void showLobbyHostDialog(String lobbyName, String username, JPanel createdLobbyRow) {
+        LobbyHostDialog lobbyHostView = new LobbyHostDialog(parentView, lobbyName, username);
+        LobbyHostModel lobbyHostModel = new LobbyHostModel(model.getUserToken(), lobbyName, username, model.getLobbyId());
+
+        LobbyHostController lobbyHostController = new LobbyHostController(lobbyHostView, lobbyHostModel, parentView, parentController, createdLobbyRow, true);
+        lobbyHostView.setVisible(true);
     }
 }
