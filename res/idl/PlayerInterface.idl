@@ -54,34 +54,48 @@ module Server {
             long createLobby(in string userToken, in string lobbyName)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             boolean joinLobby(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             void deleteLobby(in long lobbyID)
                 raises(Exceptions::LostConnectionException);
+
             void leaveLobby(in string userId, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                 Exceptions::NotLoggedInException);
+
             long removeAllPlayersFromLobby(in long lobbyID)
                 raises(Exceptions::LostConnectionException);
+
             boolean removePlayerFromLobby(in long lobbyId, in string username)
                 raises(Exceptions::LostConnectionException);
+
             typedef sequence<string> StringArray;
             StringArray getPlayersInLobby(in string token, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             boolean startGame(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             boolean isGameStarted(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             boolean closeLobby(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
             long getWaitingDuration(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
+
+            string getHostUsername(in string userId, in long lobbyId)
+                raises(Exceptions::LostConnectionException,
+                    Exceptions::NotLoggedInException);
 
             // Leaderboard
             CommonObjects::StringSequence getLeaderboard(in string userId)
