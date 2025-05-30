@@ -6,6 +6,21 @@ module Server{
 		typedef sequence<CommonObjects::User> users;
 		typedef sequence<CommonObjects::GameResult> playedSessions;
 
+		struct GameResult {
+                    string sessionId;
+                    string winner;
+                    long roundsPlayed;
+                    long totalGuessesMade;
+                    long duration;           // Game duration in seconds
+                };
+
+                struct LobbyInfo {
+                    string lobbyId;
+                    string hostName;
+                    long currentPlayers;
+                    boolean gameStarted;
+                };
+
 		interface AdminInterface {
 			void createPlayer(in string playerId, in string password) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException);
 			void editUserDetails(in string userId, in string password) raises(Exceptions::LostConnectionException, Exceptions::NotLoggedInException, Exceptions::NoSuchUserFoundException);

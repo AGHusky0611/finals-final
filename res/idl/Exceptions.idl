@@ -21,6 +21,9 @@ module Server {
         exception TimeoutException {
             string message;
         };
+        exception InvalidRulesException{
+            string message;
+        };
 
         // Lobby exceptions
         exception SessionFullException {

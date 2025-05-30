@@ -22,6 +22,7 @@ import javax.swing.*;
  */
 public class CreateLobbyController {
     private String userid;
+    private int lobbyId;
 
     private CreateLobbyDialog view;
     private CreateLobbyModel model;
@@ -69,15 +70,15 @@ public class CreateLobbyController {
         }
 
         try {
-            int lobbyId = model.createLobby(lobbyName);
+            lobbyId = model.createLobby(lobbyName);
             model.joinLobby(lobbyId);
             model.setLobbyId(lobbyId);
 
             //todo - still need fixing
-            String username = model.getHostUsername(userid, lobbyId);
-            JPanel createdLobbyRow = parentView.addLobbyRow(username, lobbyName, 1);
+            String hostUsername = model.getHostUsername(userid, lobbyId);
+            JPanel createdLobbyRow = parentView.addLobbyRow(hostUsername, lobbyName, 1);
             view.dispose();
-            showLobbyHostDialog(lobbyName, username, createdLobbyRow);
+            showLobbyHostDialog(lobbyName, hostUsername, createdLobbyRow);
 
         } catch (NotLoggedInException e) {
             view.showErrorMessage("Session expired. Please login again.");
@@ -98,7 +99,7 @@ public class CreateLobbyController {
 
         LobbyHostController lobbyHostController = new LobbyHostController(lobbyHostView, lobbyHostModel,
                 parentView, parentController,
-                createdLobbyRow, true, userid);
+                createdLobbyRow, true, userid, lobbyId);
         lobbyHostView.setVisible(true);
     }
 }

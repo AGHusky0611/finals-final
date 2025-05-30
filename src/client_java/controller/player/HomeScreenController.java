@@ -59,9 +59,7 @@ public class HomeScreenController {
 
     private void initializeLobbyUpdates() {
         lobbyUpdateTimer = new Timer(LOBBY_UPDATE_INTERVAL, e -> {
-            SwingUtilities.invokeLater(() -> {
-                initializeLobbyList();
-            });
+            SwingUtilities.invokeLater(this::initializeLobbyList);
         });
         lobbyUpdateTimer.start();
     }
@@ -236,4 +234,17 @@ public class HomeScreenController {
     public HomeScreenModel getModel() {
         return model;
     }
+
+    public void refreshLobbyList() {
+        view.refreshLobbyList();
+    }
+
+    public void forceLobbyListRefresh() {
+        if (lobbyUpdateTimer != null && lobbyUpdateTimer.isRunning()) {
+            lobbyUpdateTimer.stop();
+            initializeLobbyList();
+            lobbyUpdateTimer.start();
+        }
+    }
+
 }

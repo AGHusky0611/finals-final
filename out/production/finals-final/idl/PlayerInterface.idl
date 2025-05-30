@@ -46,20 +46,20 @@ module Server {
                 raises(Exceptions::NotLoggedInException,
                     Exceptions::LostConnectionException);
 
-            string getLobbyHost(in long lobbyId)
+            string getLobbyHost(in string userId, in long lobbyId)
                 raises(Exceptions::LostConnectionException);
 
 
             // Lobby Management
-            long createLobby(in string userToken, in string lobbyName)
+            long createLobby(in string userId, in string lobbyName)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
 
-            boolean joinLobby(in string userToken, in long lobbyId)
+            boolean joinLobby(in string userId, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
 
-            void deleteLobby(in long lobbyID)
+            void deleteLobby(in string userId, in long lobbyID)
                 raises(Exceptions::LostConnectionException);
 
             void leaveLobby(in string userId, in long lobbyId)
@@ -69,7 +69,7 @@ module Server {
             long removeAllPlayersFromLobby(in long lobbyID)
                 raises(Exceptions::LostConnectionException);
 
-            boolean removePlayerFromLobby(in long lobbyId, in string username)
+            boolean removePlayerFromLobby(in string userId, in long lobbyId)
                 raises(Exceptions::LostConnectionException);
 
             typedef sequence<string> StringArray;
@@ -92,10 +92,6 @@ module Server {
             long getWaitingDuration(in string userToken, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
-
-            string getHostUsername(in string userId, in long lobbyId)
-                raises(Exceptions::LostConnectionException,
-                    Exceptions::NotLoggedInException);
 
             // Leaderboard
             CommonObjects::StringSequence getLeaderboard(in string userId)

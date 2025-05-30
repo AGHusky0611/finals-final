@@ -3,7 +3,6 @@ package serverMain;
 import Server.Exceptions.*;
 import Server.PlayerSide.PlayerInterfacePOA;
 
-import java.rmi.RemoteException;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -160,6 +159,9 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     @Override
     public String[] getLobbyList(String userToken) throws LostConnectionException {
+        logger.info(String.format("[CLIENT - %s] Request: getLobbyList",
+                SessionManagement.getUsername(userToken)));
+
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              CallableStatement stmt = conn.prepareCall("{CALL getActiveLobbies()}")) {
 
@@ -167,19 +169,25 @@ public class PlayerImpl extends PlayerInterfacePOA {
             List<String> lobbies = new ArrayList<>();
 
             while (rs.next()) {
-                lobbies.add(rs.getInt("lobbyID") + ":" +
-                        rs.getString("lobbyName") + ":" +
-                        rs.getInt("playerCount"));
+                lobbies.add(String.join(":",
+                        String.valueOf(rs.getInt("lobbyID")),
+                        rs.getString("lobbyName"),
+                        String.valueOf(rs.getInt("playerCount")),
+                        rs.getString("hostUsername") // Added host username
+                ));
             }
 
-            // Return empty array instead of null if no lobbies
-            return lobbies.isEmpty() ? new String[0] : lobbies.toArray(new String[0]);
+            logger.info(String.format("[SERVER] Returning %d active lobbies", lobbies.size()));
+            return lobbies.toArray(new String[0]);
 
         } catch (SQLException e) {
-            throw new LostConnectionException("Database error");
+            logger.log(Level.SEVERE, "[SERVER] Database error in getLobbyList", e);
+            if (e.getMessage().contains("connection") || e.getErrorCode() == 0) {
+                throw new LostConnectionException("Database connection error");
+            }
+            throw new LostConnectionException("Failed to retrieve lobby list: " + e.getMessage());
         }
     }
-
 
     private String generateToken() throws LostConnectionException {
         try {
@@ -247,19 +255,19 @@ public class PlayerImpl extends PlayerInterfacePOA {
     }
 
     @Override
-    public String getLobbyHost(int lobbyId) throws LostConnectionException {
+    public String getLobbyHost(String userid, int lobbyId) throws LostConnectionException {
         return "";
     }
 
     @Override
-    public int createLobby(String userToken, String lobbyName)
+    public int createLobby(String userId, String lobbyName)
             throws LostConnectionException, NotLoggedInException, IllegalArgumentException {
 
         // Validate session
-        if (!SessionManagement.isValidToken(userToken)) {
+        if (!SessionManagement.isValidToken(userId)) {
             throw new NotLoggedInException("Invalid or expired token");
         }
-        String username = SessionManagement.getUsername(userToken);
+        String username = SessionManagement.getUsername(userId);
         if (username == null) {
             throw new NotLoggedInException("No user associated with this token");
         }
@@ -350,26 +358,36 @@ public class PlayerImpl extends PlayerInterfacePOA {
                     "DELETE FROM playerinlobby WHERE username = ? AND lobbyID = ?")) {
                 stmt.setString(1, username);
                 stmt.setInt(2, lobbyId);
-                stmt.executeUpdate();
+                int rowsAffected = stmt.executeUpdate();
+
+                if (rowsAffected == 0) {
+                    conn.rollback();
+                    throw new NotLoggedInException("Player was not in the specified lobby");
+                }
             }
 
             // Check if lobby is empty now
+            boolean lobbyIsEmpty = false;
             try (PreparedStatement checkStmt = conn.prepareStatement(
                     "SELECT COUNT(*) FROM playerinlobby WHERE lobbyID = ?")) {
                 checkStmt.setInt(1, lobbyId);
                 ResultSet rs = checkStmt.executeQuery();
-                if (rs.next() && rs.getInt(1) == 0) {
-                    // Delete empty lobby
-                    try (PreparedStatement deleteStmt = conn.prepareStatement(
-                            "DELETE FROM lobby WHERE lobbyID = ?")) {
-                        deleteStmt.setInt(1, lobbyId);
-                        deleteStmt.executeUpdate();
-                    }
+                if (rs.next()) {
+                    lobbyIsEmpty = rs.getInt(1) == 0;
+                }
+            }
+
+            if (lobbyIsEmpty) {
+                // Delete empty lobby
+                try (PreparedStatement deleteStmt = conn.prepareStatement(
+                        "DELETE FROM lobby WHERE lobbyID = ?")) {
+                    deleteStmt.setInt(1, lobbyId);
+                    deleteStmt.executeUpdate();
                 }
             }
 
             conn.commit();
-            logger.info("Player " + username + " left lobby " + lobbyId);
+            logger.info("Player " + username + " left lobby " + lobbyId + (lobbyIsEmpty ? " and lobby was deleted" : ""));
 
         } catch (SQLException e) {
             try {
@@ -397,13 +415,55 @@ public class PlayerImpl extends PlayerInterfacePOA {
     }
 
     @Override
-    public boolean removePlayerFromLobby(int lobbyId, String username) throws LostConnectionException {
-        return false;
+    public boolean removePlayerFromLobby(String userId, int lobbyId) throws LostConnectionException {
+        String sql = "{CALL removePlayerFromLobby(?, ?)}";
+
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.setString(1, getUsernameByToken(userId));
+            stmt.setInt(2, lobbyId);
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+
+        } catch (SQLException e) {
+            throw new LostConnectionException("Database error");
+        } catch (NotLoggedInException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public String[] getPlayersInLobby(String token, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        return new String[0];
+    public String[] getPlayersInLobby(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
+        try {
+            if (!SessionManagement.isValidToken(userId)) {
+                throw new NotLoggedInException("[SERVER]: Invalid or expired token");
+            }
+
+            System.out.println("[SERVER]: " + SessionManagement.getUsername(userId) + " Requesting the players in the lobby id: " + lobbyId);
+            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+                 CallableStatement stmt = conn.prepareCall("{CALL getPlayersInLobby(?)}")) {
+
+                stmt.setInt(1, lobbyId);
+                ResultSet rs = stmt.executeQuery();
+                List<String> players = new ArrayList<>();
+
+                while (rs.next()) {
+                    players.add(rs.getString("username"));
+                }
+
+                return players.isEmpty() ? new String[0] : players.toArray(new String[0]);
+            }
+
+        } catch (NotLoggedInException e) {
+            logger.log(Level.WARNING, "[SERVER]: Token validation failed for lobby request: " + userId, e);
+            throw e;
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "[SERVER]: Database error retrieving players for lobby ID: " + lobbyId, e);
+            throw new LostConnectionException("Database error");
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "[SERVER]: Error retrieving players for lobby ID: " + lobbyId, e);
+            throw new LostConnectionException("[SERVER]: Server error while retrieving lobby players");
+        }
     }
 
     @Override
@@ -413,12 +473,48 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     @Override
     public boolean isGameStarted(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        return false;
+        String sql = "SELECT gameStarted FROM lobby WHERE lobbyID = ? AND isOpen = 1";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, lobbyId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("gameStarted") == 1;
+                }
+
+                return false; // Lobby not found or closed
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error checking game status: " + e.getMessage());
+            throw new LostConnectionException("Database error: " + e.getMessage());
+        }
     }
 
     @Override
-    public boolean closeLobby(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        return false;
+    public boolean closeLobby(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
+        if (!SessionManagement.isValidToken(userId)) {
+            throw new NotLoggedInException("[SERVER]: Invalid or expired token");
+        }
+        String username = SessionManagement.getUsername(userId);
+        if (username == null) {
+            throw new NotLoggedInException("[SERVER]: No user associated with this token");
+        }
+
+        String sql = "CALL closeLobby(?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, lobbyId);
+            stmt.setString(2, username);
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Error closing lobby: " + e.getMessage());
+            throw new LostConnectionException("Database error: " + e.getMessage());
+        }
     }
 
     @Override
@@ -427,26 +523,7 @@ public class PlayerImpl extends PlayerInterfacePOA {
     }
 
     @Override
-    public String getHostUsername(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        System.out.println("[SERVER]:" + SessionManagement.getUsername(userId) +" Getting host username for lobby " + lobbyId);
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "SELECT hostUsername FROM lobby WHERE lobbyID = ?")) {
-            stmt.setInt(1, lobbyId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return rs.getString("hostUsername");
-            }
-            throw new SQLException("Lobby not found");
-        } catch (SQLException e) {
-            if (e.getMessage().contains("connection")) {
-                throw new LostConnectionException("Database connection lost");
-            }
-            throw new LostConnectionException("Failed to get lobby host: " + e.getMessage());
-        }
-    }
-
-    public void deleteLobby(int lobbyID) throws LostConnectionException {
+    public void deleteLobby(String userId,int lobbyID) throws LostConnectionException {
         try {
             CallableStatement stmt = connection.prepareCall("{CALL deleteLobby(?)}");
             stmt.setInt(1, lobbyID);

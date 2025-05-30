@@ -33,13 +33,9 @@ module Server {
     };
 
     module CommonInterface {
-        interface CallBackInterface {
-            // Game-related callbacks
-            void updatePlayerList(in CommonObjects::StringSequence players);
-            void gameStarted();
-            void wordToGuess(in string wordWithBlanks); // e.g., "H _ N G M _ N"
-            void guessResult(in string playerId, in boolean correct, in char letter);
-            void gameEnded(in CommonObjects::GameResult result);
+        interface GameInterface {
+            CommonObjects::GameRules getCurrentRules();
+            void applyGameRules(in CommonObjects::GameRules newRules);
         };
     };
 };

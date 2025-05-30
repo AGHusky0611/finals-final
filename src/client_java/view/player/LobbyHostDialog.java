@@ -107,4 +107,9 @@ public class LobbyHostDialog extends JDialog {
     public void showErrorMessage(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
+
+    public void showInfoMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
+    }
+
 }

@@ -1,7 +1,6 @@
 package serverMain;
 
 import Server.AdminSide.AdminInterfacePOA;
-import Server.CommonInterface.CallBackInterface;
 import Server.CommonObjects.GameResult;
 import Server.CommonObjects.GameRules;
 import Server.CommonObjects.User;
@@ -41,28 +40,6 @@ public class AdminImpl extends AdminInterfacePOA {
         }
     }
 
-
-    // needs more fixing and checking specifically sa view
-    @Override
-    public User login(CallBackInterface cb, String adminId, String password) throws LostConnectionException, AlreadyLoggedInException {
-        String sql = "SELECT user_id, password, display_name FROM admins WHERE user_id = ? AND password = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, adminId);
-            stmt.setString(2, password);
-            ResultSet rs = stmt.executeQuery();
-            if (!rs.next()) {
-                throw new AlreadyLoggedInException("Invalid admin credentials");
-            }
-            User admin = new User();
-            admin.userId = rs.getString("user_id");
-            admin.password = rs.getString("password");
-            admin.displayName = rs.getString("display_name");
-            return admin;
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during admin login", e);
-            throw new LostConnectionException("Database connection issue");
-        }
-    }
 
     @Override
     public void createPlayer(String playerId, String password) throws LostConnectionException, NotLoggedInException {
@@ -116,7 +93,6 @@ public class AdminImpl extends AdminInterfacePOA {
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 User u = new User();
-                u.userId = rs.getString("user_id");
                 u.password = rs.getString("password");
                 u.displayName = rs.getString("display_name");
                 list.add(u);
@@ -138,7 +114,6 @@ public class AdminImpl extends AdminInterfacePOA {
                 throw new NoSuchUserFoundException("User not found: " + userId);
             }
             User u = new User();
-            u.userId = rs.getString("user_id");
             u.password = rs.getString("password");
             u.displayName = rs.getString("display_name");
             return u;
