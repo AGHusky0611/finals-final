@@ -525,46 +525,20 @@ public class LobbyHostController {
         try {
             List<String> players = model.getPlayersInLobby(userid, lobbyId);
 
-
-
             if (!isHost && (players == null || players.isEmpty())) {
-                try {
-                    List<String> verifyPlayers = model.getPlayersInLobby(userid, lobbyId);
-                    if (verifyPlayers == null || verifyPlayers.isEmpty()) {
-                        handleLobbyNoLongerExists();
-                        return;
-                    }
-                } catch (Exception verifyEx) {
-                    handleLobbyNoLongerExists();
-                    return;
-                }
+                handleLobbyNoLongerExists();
+                return;
             }
 
             if (players != null) {
-                String hostName = getHostName();
-                if (hostName != null && !hostName.isEmpty() && !hostName.equals("unknown")) {
-                    if (!players.contains(hostName)) {
-                        players.add(0, hostName);
-                    }
-                } else {
-                    String fallbackName = parentController.getUsername();
-                    if (fallbackName != null && !players.contains(fallbackName)) {
-                        players.add(0, fallbackName);
-                    }
-                }
-
-                int currentPlayerCount = players.size();
-                if (currentPlayerCount > lastPlayerCount) {
-                    System.out.println("New player joined. Resetting countdown...");
-                    resetCountdownFromServer();
-                }
-
-                lastPlayerCount = currentPlayerCount;
-
+                // Only show players actually in this lobby
                 view.getPlayerListModel().clear();
                 for (String player : players) {
                     view.getPlayerListModel().addElement(player);
                 }
+
+                // Update player count display
+//                view.updatePlayerCount(players.size()); todo
             }
 
         } catch (NotLoggedInException e) {

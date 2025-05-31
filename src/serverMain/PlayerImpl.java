@@ -450,19 +450,21 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     @Override
     public boolean removePlayerFromLobby(String userId, int lobbyId) throws LostConnectionException {
-        String sql = "{CALL removePlayerFromLobby(?, ?)}";
+        try {
+            // First get the username from the token
+            String username = getUsernameByToken(userId);
 
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
-            stmt.setString(1, getUsernameByToken(userId));
-            stmt.setInt(2, lobbyId);
-
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
-
-        } catch (SQLException e) {
-            throw new LostConnectionException("Database error");
+            try (CallableStatement stmt = connection.prepareCall("{CALL removePlayerFromLobby(?, ?)}")) {
+                stmt.setString(1, username);
+                stmt.setInt(2, lobbyId);
+                int rowsAffected = stmt.executeUpdate();
+                return rowsAffected > 0;
+            }
         } catch (NotLoggedInException e) {
-            throw new RuntimeException(e);
+            throw new LostConnectionException("User not logged in");
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error removing player from lobby", e);
+            throw new LostConnectionException("Database error");
         }
     }
 
@@ -484,12 +486,21 @@ public class PlayerImpl extends PlayerInterfacePOA {
                     // Verify each player's session is still active
                     if (SessionManagement.isUserActive(username)) {
                         activePlayers.add(username);
+                    } else {
+                        // Remove inactive players from lobby
+                        try (PreparedStatement removeStmt = connection.prepareStatement(
+                                "DELETE FROM playerinlobby WHERE username = ? AND lobbyID = ?")) {
+                            removeStmt.setString(1, username);
+                            removeStmt.setInt(2, lobbyId);
+                            removeStmt.executeUpdate();
+                        }
                     }
                 }
                 return activePlayers.toArray(new String[0]);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            logger.log(Level.SEVERE, "Error getting players in lobby", e);
+            throw new LostConnectionException("Database error");
         }
     }
 
