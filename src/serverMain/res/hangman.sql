@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: May 30, 2025 at 07:21 AM
+-- Generation Time: May 31, 2025 at 03:43 AM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -35,16 +35,11 @@ SET isOpen = FALSE, currentWord = NULL, winner = userWinner
 WHERE lobbyID = lobby_id$$
 
 DROP PROCEDURE IF EXISTS `createLobby`$$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `createLobby` (IN `p_lobbyName` VARCHAR(100), IN `p_hostUsername` VARCHAR(100), OUT `p_lobbyID` INT)   proc: BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `createLobby` (IN `p_lobbyName` VARCHAR(100), IN `p_hostUsername` VARCHAR(100), OUT `p_lobbyID` INT)   BEGIN
     DECLARE next_id INT;
-
-    -- Generate new ID
     SELECT COALESCE(MAX(lobbyID), 0) + 1 INTO next_id FROM lobby;
-
-    -- Insert new lobby
-    INSERT INTO lobby (lobbyID, lobbyName, isOpen, gameStarted)
-    VALUES (next_id, p_lobbyName, TRUE, FALSE);
-
+    INSERT INTO lobby (lobbyID, lobbyName, hostUsername, isOpen, gameStarted)
+    VALUES (next_id, p_lobbyName, p_hostUsername, TRUE, FALSE);
     SET p_lobbyID = next_id;
 END$$
 
@@ -63,11 +58,12 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `getActiveLobbies` ()   BEGIN
     SELECT
         l.lobbyID,
         l.lobbyName,
+        l.hostUsername,
         COUNT(p.username) AS playerCount
     FROM lobby l
     LEFT JOIN playerinlobby p ON l.lobbyID = p.lobbyID
     WHERE l.isOpen = TRUE AND l.gameStarted = FALSE
-    GROUP BY l.lobbyID, l.lobbyName;
+    GROUP BY l.lobbyID, l.lobbyName, l.hostUsername;
 END$$
 
 DROP PROCEDURE IF EXISTS `getPlayersInLobby`$$
@@ -192,6 +188,7 @@ DROP TABLE IF EXISTS `lobby`;
 CREATE TABLE IF NOT EXISTS `lobby` (
   `lobbyID` int NOT NULL,
   `lobbyName` varchar(15) NOT NULL,
+  `hostUsername` varchar(15) NOT NULL,
   `isOpen` tinyint(1) NOT NULL,
   `gameStarted` tinyint(1) NOT NULL,
   `winner` varchar(15) DEFAULT NULL,
@@ -204,19 +201,19 @@ CREATE TABLE IF NOT EXISTS `lobby` (
 -- Dumping data for table `lobby`
 --
 
-INSERT INTO `lobby` (`lobbyID`, `lobbyName`, `isOpen`, `gameStarted`, `winner`, `currentWord`) VALUES
-(1, 'meow', 0, 1, 'abrelle', NULL),
-(2, 'woof', 0, 1, 'christian', NULL),
-(3, 'bark', 0, 1, 'justinne', NULL),
-(4, 'purr', 0, 1, 'kyle', NULL),
-(5, 'chuff', 0, 1, 'kyle', NULL),
-(6, 'awoo', 0, 1, 'jervign', NULL),
-(7, 'mrrow', 0, 1, 'abrelle', NULL),
-(8, 'yip', 0, 1, 'jervign', NULL),
-(9, 'growl', 0, 1, 'kyle', NULL),
-(10, 'roar', 0, 1, 'christian', NULL),
-(11, 'hiss', 0, 1, 'kyle', NULL),
-(12, 'howl', 0, 1, 'christian', NULL);
+INSERT INTO `lobby` (`lobbyID`, `lobbyName`, `hostUsername`, `isOpen`, `gameStarted`, `winner`, `currentWord`) VALUES
+(1, 'meow', '', 0, 1, 'abrelle', NULL),
+(2, 'woof', '', 0, 1, 'christian', NULL),
+(3, 'bark', '', 0, 1, 'justinne', NULL),
+(4, 'purr', '', 0, 1, 'kyle', NULL),
+(5, 'chuff', '', 0, 1, 'kyle', NULL),
+(6, 'awoo', '', 0, 1, 'jervign', NULL),
+(7, 'mrrow', '', 0, 1, 'abrelle', NULL),
+(8, 'yip', '', 0, 1, 'jervign', NULL),
+(9, 'growl', '', 0, 1, 'kyle', NULL),
+(10, 'roar', '', 0, 1, 'christian', NULL),
+(11, 'hiss', '', 0, 1, 'kyle', NULL),
+(12, 'howl', '', 0, 1, 'christian', NULL);
 
 -- --------------------------------------------------------
 
@@ -263,9 +260,16 @@ CREATE TABLE IF NOT EXISTS `playerinlobby` (
 --
 
 INSERT INTO `playerinlobby` (`username`, `lobbyID`, `scoreCount`) VALUES
-('jervign', 8, 6),
-('kyle', 8, 2),
-('drent', 8, 0);
+('christian', 14, 0),
+('christian', 13, 0),
+('drent', 8, 0),
+('christian', 20, 0),
+('christian', 19, 0),
+('christian', 18, 0),
+('christian', 16, 0),
+('christian', 17, 0),
+('christian', 21, 0),
+('christian', 15, 0);
 
 -- --------------------------------------------------------
 
