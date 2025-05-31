@@ -3,7 +3,7 @@ package serverMain;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SessionManagement {
+public class  SessionManagement {
     // Token -> Username mapping
     private static final Map<String, String> activeSessions = new ConcurrentHashMap<>();
     // Username -> Token mapping

@@ -525,6 +525,8 @@ public class LobbyHostController {
         try {
             List<String> players = model.getPlayersInLobby(userid, lobbyId);
 
+
+
             if (!isHost && (players == null || players.isEmpty())) {
                 try {
                     List<String> verifyPlayers = model.getPlayersInLobby(userid, lobbyId);

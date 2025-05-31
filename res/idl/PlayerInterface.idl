@@ -55,7 +55,7 @@ module Server {
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
 
-            boolean joinLobby(in string userId, in long lobbyId)
+            long joinLobby(in string userId, in long lobbyId)
                 raises(Exceptions::LostConnectionException,
                        Exceptions::NotLoggedInException);
 

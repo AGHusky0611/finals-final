@@ -326,8 +326,48 @@ public class PlayerImpl extends PlayerInterfacePOA {
     }
 
     @Override
-    public boolean joinLobby(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
-        return false;
+    public int joinLobby(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
+        if (!SessionManagement.isValidToken(userToken)) {
+            throw new NotLoggedInException("[SERVER]: Invalid or expired token");
+        }
+        String username = SessionManagement.getUsername(userToken);
+        System.out.println("[SERVER]: " + username + " Joining lobby: " + lobbyId);
+        if (username == null) {
+            throw new NotLoggedInException("[SERVER]: No user associated with this token");
+        }
+
+        try (CallableStatement stmt = connection.prepareCall("{CALL joinLobby(?, ?)}")) {
+            stmt.setString(1, username);
+            stmt.setInt(2, lobbyId);
+
+            boolean hasResultSet = stmt.execute();
+            if (hasResultSet) {
+                try (ResultSet rs = stmt.getResultSet()) {
+                    while (rs.next()) {
+                    }
+                }
+            }
+            while (stmt.getMoreResults()) {
+                try (ResultSet rs = stmt.getResultSet()) {
+                    while (rs.next()) {
+                    }
+                }
+            }
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
+            logger.info("[SERVER]: User '" + username + "' joined lobby ID: " + lobbyId);
+            return lobbyId;
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "[SERVER]: SQL error while joining lobby: " + e.getMessage(), e);
+            logger.log(Level.SEVERE, "[SERVER]: SQL State: " + e.getSQLState() + ", Error Code: " + e.getErrorCode());
+
+            if (e.getMessage().contains("Communications link failure") || e.getMessage().contains("connection")) {
+                throw new LostConnectionException("Database connection lost: " + e.getMessage());
+            }
+
+            throw new RuntimeException("SQL error in joinLobby: " + e.getMessage(), e);
+        }
     }
 
 
@@ -429,34 +469,27 @@ public class PlayerImpl extends PlayerInterfacePOA {
     @Override
     public String[] getPlayersInLobby(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
         try {
+            // First verify the requesting user's session
             if (!SessionManagement.isValidToken(userId)) {
                 throw new NotLoggedInException("[SERVER]: Invalid or expired token");
             }
 
-            System.out.println("[SERVER]: " + SessionManagement.getUsername(userId) + " Requesting the players in the lobby id: " + lobbyId);
-            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-                 CallableStatement stmt = conn.prepareCall("{CALL getPlayersInLobby(?)}")) {
-
+            try (CallableStatement stmt = connection.prepareCall("{CALL getPlayersInLobby(?)}")) {
                 stmt.setInt(1, lobbyId);
                 ResultSet rs = stmt.executeQuery();
-                List<String> players = new ArrayList<>();
+                List<String> activePlayers = new ArrayList<>();
 
                 while (rs.next()) {
-                    players.add(rs.getString("username"));
+                    String username = rs.getString("username");
+                    // Verify each player's session is still active
+                    if (SessionManagement.isUserActive(username)) {
+                        activePlayers.add(username);
+                    }
                 }
-
-                return players.isEmpty() ? new String[0] : players.toArray(new String[0]);
+                return activePlayers.toArray(new String[0]);
             }
-
-        } catch (NotLoggedInException e) {
-            logger.log(Level.WARNING, "[SERVER]: Token validation failed for lobby request: " + userId, e);
-            throw e;
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "[SERVER]: Database error retrieving players for lobby ID: " + lobbyId, e);
-            throw new LostConnectionException("Database error");
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "[SERVER]: Error retrieving players for lobby ID: " + lobbyId, e);
-            throw new LostConnectionException("[SERVER]: Server error while retrieving lobby players");
+            throw new RuntimeException(e);
         }
     }
 
@@ -529,6 +562,14 @@ public class PlayerImpl extends PlayerInterfacePOA {
 
     private LocalDateTime getDateTime() {
         return LocalDateTime.now();
+    }
+
+    public void cleanupExpiredLobbySessions() {
+        try (CallableStatement stmt = connection.prepareCall("{CALL cleanupExpiredLobbySessions()}")) {
+            stmt.execute();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error cleaning up expired lobby sessions", e);
+        }
     }
 
 }
