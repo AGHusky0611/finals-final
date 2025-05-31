@@ -56,10 +56,6 @@ public class CreateLobbyModel {
         }
     }
 
-    public void setLobbyId(int lobbyId) {
-        this.lobbyId = lobbyId;
-    }
-
     public String getHostUsername(String userId, int lobbyId) throws LostConnectionException, NotLoggedInException {
         return playerServer.getLobbyHost(userId, lobbyId);
     }

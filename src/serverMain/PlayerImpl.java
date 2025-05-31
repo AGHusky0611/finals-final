@@ -326,47 +326,23 @@ public class PlayerImpl extends PlayerInterfacePOA {
     }
 
     @Override
-    public int joinLobby(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
+    public boolean joinLobby(String userToken, int lobbyId) throws LostConnectionException, NotLoggedInException {
         if (!SessionManagement.isValidToken(userToken)) {
-            throw new NotLoggedInException("[SERVER]: Invalid or expired token");
-        }
-        String username = SessionManagement.getUsername(userToken);
-        System.out.println("[SERVER]: " + username + " Joining lobby: " + lobbyId);
-        if (username == null) {
-            throw new NotLoggedInException("[SERVER]: No user associated with this token");
+            throw new NotLoggedInException("Invalid token");
         }
 
+        String username = SessionManagement.getUsername(userToken);
         try (CallableStatement stmt = connection.prepareCall("{CALL joinLobby(?, ?)}")) {
             stmt.setString(1, username);
             stmt.setInt(2, lobbyId);
-
-            boolean hasResultSet = stmt.execute();
-            if (hasResultSet) {
-                try (ResultSet rs = stmt.getResultSet()) {
-                    while (rs.next()) {
-                    }
-                }
-            }
-            while (stmt.getMoreResults()) {
-                try (ResultSet rs = stmt.getResultSet()) {
-                    while (rs.next()) {
-                    }
-                }
-            }
-            if (!connection.getAutoCommit()) {
-                connection.commit();
-            }
-            logger.info("[SERVER]: User '" + username + "' joined lobby ID: " + lobbyId);
-            return lobbyId;
+            stmt.execute();
+            return true;
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "[SERVER]: SQL error while joining lobby: " + e.getMessage(), e);
-            logger.log(Level.SEVERE, "[SERVER]: SQL State: " + e.getSQLState() + ", Error Code: " + e.getErrorCode());
-
-            if (e.getMessage().contains("Communications link failure") || e.getMessage().contains("connection")) {
-                throw new LostConnectionException("Database connection lost: " + e.getMessage());
+            logger.log(Level.SEVERE, "Join lobby failed", e);
+            if (e.getErrorCode() == 1062) { // Duplicate entry
+                return false;
             }
-
-            throw new RuntimeException("SQL error in joinLobby: " + e.getMessage(), e);
+            throw new LostConnectionException("Database error");
         }
     }
 

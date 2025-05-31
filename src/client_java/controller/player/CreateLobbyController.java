@@ -71,8 +71,11 @@ public class CreateLobbyController {
 
         try {
             lobbyId = model.createLobby(lobbyName);
-            model.joinLobby(lobbyId);
-            model.setLobbyId(lobbyId);
+            boolean joined = model.joinLobby(lobbyId);
+            if (!joined) {
+                view.showErrorMessage("Failed to join lobby");
+                return;
+            }
 
             String hostUsername = model.getHostUsername(userid, lobbyId);
             System.out.println("[DEBUG - retrieval of host]: " + hostUsername);
