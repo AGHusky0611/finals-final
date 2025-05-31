@@ -1,5 +1,7 @@
 package client_java.model.player;
 
+import Server.Exceptions.LostConnectionException;
+import Server.Exceptions.NotLoggedInException;
 import Server.PlayerSide.PlayerInterface;
 import client_java.util.PlayerServerConnection;
 
@@ -23,7 +25,7 @@ public class GameModel {
         }
     }
 
-    public String guess(String shownWord, char c, String userId, int lobbyID) {
+    public String guess(String shownWord, char c, String userId, int lobbyID) throws LostConnectionException, NotLoggedInException {
         String show = playerServer.guess(shownWord, lobbyID, c, userId);
         if (!show.contains("_"))
             signalWin();

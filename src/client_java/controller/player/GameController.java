@@ -1,5 +1,7 @@
 package client_java.controller.player;
 
+import Server.Exceptions.LostConnectionException;
+import Server.Exceptions.NotLoggedInException;
 import client_java.model.player.*;
 import client_java.view.player.*;
 
@@ -53,7 +55,14 @@ public class GameController {
         @Override
         public void keyReleased(KeyEvent e) {
             char keyChar = e.getKeyChar();
-            String result = model.guess(wordToShow, keyChar, userId, lobbyId);
+            String result = null;
+            try {
+                result = model.guess(wordToShow, keyChar, userId, lobbyId);
+            } catch (LostConnectionException ex) {
+                throw new RuntimeException(ex);
+            } catch (NotLoggedInException ex) {
+                throw new RuntimeException(ex);
+            }
             view.getWord().setText(result);
             view.changeImage(5-model.tryCount);
             view.getTriesLeft().setText("Tries Left: "+ model.tryCount);
