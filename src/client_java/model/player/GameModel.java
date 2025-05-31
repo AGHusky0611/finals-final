@@ -1,45 +1,48 @@
 package client_java.model.player;
 
-public class GameModel {
-  //  private String word;
-  //  private int mistakes;
-  //  private char[] shownWord;
-  //  private String player;
-//
-  //  public GameModel(String word, String player) {
-  //      this.word = word;
-  //      this.player = player;
-  //      mistakes = 0;
-  //      shownWord = new char[word.length()];
-  //      char guessChar;
-  //      String checkWord;
-//
-  //      for(int i = 0; i < shownWord.length; i++)
-  //          shownWord[i] = '_';
-//
-  //      while(mistakes < 5) {
-  //          guessChar = take input from user through view (or controller?? idk)
-  //          guess(guessChar);
-  //          checkWord = new String(shownWord);
-  //          if (!checkWord.contains("_"))
-  //              endRound(player);
-  //      }
-  //      closeRound();
-  //  }
+import Server.PlayerSide.PlayerInterface;
+import client_java.util.PlayerServerConnection;
 
-    public String guess(String word, char[] shownWord, char c) { //needs to be moved to server
-        if (word.contains(""+c)) {
-            for (int i = 0; i < shownWord.length; i++)
-                if (word.charAt(i) == c)
-                    shownWord[i] = c;
-            return new String(shownWord);
+import javax.swing.*;
+
+public class GameModel {
+    public int tryCount;
+    private int lobbyID;
+    private String username;
+    private PlayerInterface playerServer;
+
+    public GameModel() {
+        try {
+            playerServer = PlayerServerConnection.getPlayerServerConnection();
+        } catch (Exception e) {
+            PlayerServerConnection.handleConnectionError(e);
+            JOptionPane.showMessageDialog(null,
+                    "Connection failed: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
         }
-        else
-            return "*";
     }
 
-   // public void closeRound() {
-   //     display correct word for 4secs
-   //     close game instance
-   // }
+    public String guess(String shownWord, char c, String userId, int lobbyID) {
+        String show = playerServer.guess(shownWord, lobbyID, c, userId);
+        if (!show.contains("_"))
+            signalWin();
+        if (shownWord.equalsIgnoreCase(show))
+            tryCount--;
+        return show;
+    }
+
+    public void signalWin() {
+        /*
+        return player to lobby and signals to lobby mvc that they are the winner
+         */
+    }
+
+    public void exitGame() {
+        /*
+        return player to lobby screen, wait for other players to finish
+        can this part also be called by the lobby mvc? :0
+        to pull players out of their games when someone else wins na?
+         */
+    }
 }

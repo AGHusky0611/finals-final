@@ -11,7 +11,7 @@ module Server{
                     string winner;
                     long roundsPlayed;
                     long totalGuessesMade;
-                    long duration;           // Game duration in seconds
+                    long duration;
                 };
 
                 struct LobbyInfo {

@@ -4,15 +4,9 @@ import Server.Exceptions.LostConnectionException;
 import Server.Exceptions.NotLoggedInException;
 import client_java.controller.login.LoginController;
 import client_java.model.login.LoginModel;
-import client_java.model.player.CreateLobbyModel;
-import client_java.model.player.GameModel;
-import client_java.model.player.HomeScreenModel;
-import client_java.model.player.LeaderboardModel;
+import client_java.model.player.*;
 import client_java.view.login.Login;
-import client_java.view.player.CreateLobbyDialog;
-import client_java.view.player.GameUI;
-import client_java.view.player.HomeScreenUI;
-import client_java.view.player.LeaderboardUI;
+import client_java.view.player.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,7 +31,9 @@ public class HomeScreenController {
     private int countdown;
     private DefaultListModel<String> playerListModel;
     private Timer lobbyUpdateTimer;
+
     private static final int LOBBY_UPDATE_INTERVAL = 3000; // 3 seconds
+    private List<HomeScreenModel.LobbyData> allLobbies;
 
     public HomeScreenController(HomeScreenUI view, HomeScreenModel model, String userId, String username) {
         this.userId = userId;
@@ -123,8 +119,8 @@ public class HomeScreenController {
 
     private void initializeLobbyList() {
         try {
-            List<HomeScreenModel.LobbyData> lobbies = model.getLobbyList();
-            displayLobbies(lobbies);
+            allLobbies = model.getLobbyList();
+            displayLobbies(allLobbies);
             view.refreshLobbyList();
         } catch (LostConnectionException e) {
             JOptionPane.showMessageDialog(view,
@@ -172,10 +168,7 @@ public class HomeScreenController {
         try {
             // Delegate to model
             model.joinLobby(lobbyId);
-            GameUI gameUI = new GameUI();
-            GameModel gameModel = new GameModel();
-            GameController gameController = new GameController(gameModel, gameUI, username);
-            view.dispose();
+            navigateToLobbyAsPlayer(lobbyId);
         } catch (NotLoggedInException e) {
             JOptionPane.showMessageDialog(view,
                     "Session expired. Please login again.",
@@ -212,6 +205,37 @@ public class HomeScreenController {
         if (countdownTimer != null) {
             countdownTimer.stop();
         }
+    }
+
+    private void navigateToLobbyAsPlayer(int lobbyId) {
+        try {
+            HomeScreenModel.LobbyData lobbyData = findLobbyById(lobbyId);
+            if (lobbyData == null) {
+                JOptionPane.showMessageDialog(view, "Lobby not found. It may have been closed.",
+                        "Lobby Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            LobbyHostModel lobbyHostModel = new LobbyHostModel();
+            LobbyHostDialog lobbyView = new LobbyHostDialog(this.view, lobbyData.lobbyName, lobbyData.hostUsername);
+            LobbyHostController lobbyHostController = new LobbyHostController(lobbyView, lobbyHostModel, this.view, this, null, false, userId, lobbyId);
+            lobbyView.setVisible(true);
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(view, "Failed to navigate to lobby: " + e.getMessage(),
+                    "Navigation Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+
+    private HomeScreenModel.LobbyData findLobbyById(int lobbyId) {
+        if (allLobbies == null) {
+            try {
+                allLobbies = model.getLobbyList();
+            } catch (LostConnectionException e) {
+                return null;
+            }
+        }
+        return allLobbies.stream().filter(lobby -> lobby.lobbyId == lobbyId).findFirst().orElse(null);
     }
 
     public void showHomeScreen() {
